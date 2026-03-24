@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 
 const ImageUpload = ({ onUpload }) => {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
   const [error, setError] = useState("");
 
   // ✅ Validate file
@@ -15,81 +15,80 @@ const ImageUpload = ({ onUpload }) => {
     }
 
     if (file.size > maxSize) {
-      return "File size must be less than 5MB";
+      return "Each file must be less than 5MB";
     }
 
     return null;
   };
 
-  // ✅ Handle file selection
+  // ✅ Handle multiple file selection
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
 
-    const validationError = validateFile(file);
+    if (!files.length) return;
 
-    if (validationError) {
-      setError(validationError);
-      setSelectedFile(null);
+    let validFiles = [];
+    let newPreviews = [];
+    let errorMsg = "";
 
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
+    // Clear old previews
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+
+    files.forEach((file) => {
+      const validationError = validateFile(file);
+
+      if (validationError) {
+        errorMsg = validationError;
+      } else {
+        validFiles.push(file);
+        newPreviews.push(URL.createObjectURL(file));
       }
-      return;
-    }
+    });
 
-    setError("");
-
-    // Remove old preview
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    const newPreview = URL.createObjectURL(file);
-
-    setSelectedFile(file);
-    setPreviewUrl(newPreview);
+    setError(errorMsg);
+    setSelectedFiles(validFiles);
+    setPreviewUrls(newPreviews);
   };
 
   // ✅ Cleanup memory
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [previewUrl]);
+  }, [previewUrls]);
 
-  // ✅ Submit handler
+  // ✅ Handle submit
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!selectedFile) return;
+    if (!selectedFiles.length) return;
 
     const formData = new FormData();
-    formData.append("image", selectedFile);
+
+    selectedFiles.forEach((file) => {
+      formData.append("images", file);
+    });
 
     onUpload(formData);
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <input type="file" accept="image/*" onChange={handleFileChange} />
+      <input type="file" accept="image/*" multiple onChange={handleFileChange} />
 
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      {previewUrl && (
-        <img
-          src={previewUrl}
-          alt="Preview"
-          style={{ width: "200px", marginTop: "10px" }}
-        />
+      {previewUrls.length > 0 && (
+        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+          {previewUrls.map((url, index) => (
+            <img key={index} src={url} alt="Preview" width="150" />
+          ))}
+        </div>
       )}
 
       <br /><br />
 
-      <button disabled={!selectedFile || error}>
+      <button disabled={!selectedFiles.length || error}>
         Upload
       </button>
     </form>

@@ -4,8 +4,8 @@ import ImageUpload from "../components/ImageUpload";
 const CreatePost = () => {
 
   const handleUpload = (formData) => {
-    // ✅ Check file in console
-    console.log(formData.get("image"));
+    // ✅ Check multiple files
+    console.log(formData.getAll("images"));
   };
 
   return (
